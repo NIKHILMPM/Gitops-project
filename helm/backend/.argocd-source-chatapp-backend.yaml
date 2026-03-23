@@ -1,0 +1,8 @@
+helm:
+  parameters:
+  - name: image.name
+    value: ramachandrampm/chat-app-backend
+    forcestring: true
+  - name: image.tag
+    value: v1.0.1
+    forcestring: true
