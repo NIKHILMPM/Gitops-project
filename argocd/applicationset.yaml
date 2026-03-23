@@ -31,17 +31,13 @@ spec:
       annotations:
         argocd.argoproj.io/sync-wave: "{{wave}}"
 
-        # Apply only where image exists
+        # Image Updater config (CLEAN)
         argocd-image-updater.argoproj.io/image-list: "{{name}}={{image}}"
         argocd-image-updater.argoproj.io/{{name}}.update-strategy: semver
         argocd-image-updater.argoproj.io/{{name}}.allow-tags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
-        # Git write-back (values.yaml mode)
-        argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
-        argocd-image-updater.argoproj.io/write-back-target: helmvalues
 
-        # Helm mapping (IMPORTANT)
-        argocd-image-updater.argoproj.io/{{name}}.helm.image-name: image.repository
-        argocd-image-updater.argoproj.io/{{name}}.helm.image-tag: image.tag
+        # Git write-back (use argocd-source mode)
+        argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
 
     spec:
       project: default
@@ -50,9 +46,7 @@ spec:
         repoURL: https://github.com/NIKHILMPM/Gitops-project.git
         targetRevision: main
         path: "{{path}}"
-        helm:
-          valueFiles:
-            - values.yaml
+        helm: {}
 
       destination:
         server: https://kubernetes.default.svc
