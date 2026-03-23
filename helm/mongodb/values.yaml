@@ -1,0 +1,47 @@
+namespace: chat-app
+
+replicaCount: 1
+
+labels:
+  app: mongodb
+
+image:
+  repository: mongo
+  tag: latest
+
+containerPort: 27017
+
+service:
+  name: mongo
+  port: 27017
+
+statefulset:
+  name: mongodb-statefulset
+
+pv:
+  name: mongodb-pv
+  storage: 1Gi
+  storageClass: mongodb-storage
+  hostPath: /mnt/data
+
+pvc:
+  name: mongodb-pvc
+  storage: 1Gi
+  storageClass: mongodb-storage
+
+secret:
+  name: mongodb-secret
+  username: cm9vdA== # base64
+  password: YWRtaW4=
+  jwt: eW91cl9qd3Rfc2VjcmV0X2tleQ==
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+vpa:
+  name: mongodb-vpa

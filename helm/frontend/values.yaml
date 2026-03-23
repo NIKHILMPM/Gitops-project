@@ -1,0 +1,29 @@
+replicaCount: 2
+
+labels:
+  app: frontend
+
+image:
+  repository: ramachandrampm/chat-app-frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+containerPort: 80
+
+service:
+  name: frontend
+  port: 80
+
+deployment:
+  name: frontend-deployment
+
+env:
+  NODE_ENV: production
+  BACKEND_URL: http://backend:5001
+
+ingress:
+  name: chat-app-ingress
+  className: nginx
+  sslRedirect: "false"
+  backendService: backend
+  backendPort: 5001

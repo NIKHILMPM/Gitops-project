@@ -1,0 +1,42 @@
+replicaCount: 2
+
+namespace: chat-app
+
+labels:
+  app: backend
+
+image:
+  repository: ramachandrampm/chat-app-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+containerPort: 5001
+
+service:
+  name: backend
+  port: 5001
+
+deployment:
+  name: backend-deployment
+
+secret:
+  name: mongodb-secret
+
+env:
+  PORT: 5001
+  NODE_ENV: development
+  MONGODB_URI: mongodb://root:admin@mongo:27017/chatApp?authSource=admin&retryWrites=true&w=majority
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+hpa:
+  name: backend-hpa
+  minReplicas: 1
+  maxReplicas: 4
+  cpuUtilization: 50

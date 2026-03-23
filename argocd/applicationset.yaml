@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: chat-app-set
+  namespace: argocd
+
+spec:
+  generators:
+    - list:
+        elements:
+          - name: mongodb
+            path: helm/mongodb
+            namespace: chat-app
+            wave: "0"
+
+          - name: backend
+            path: helm/backend
+            namespace: chat-app
+            wave: "1"
+
+          - name: frontend
+            path: helm/frontend
+            namespace: chat-app
+            wave: "2"
+
+  template:
+    metadata:
+      name: "{{name}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "{{wave}}"
+
+    spec:
+      project: default
+
+      source:
+        repoURL: https://github.com/YOUR-REPO.git
+        targetRevision: main
+        path: "{{path}}"
+
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
