@@ -17,25 +17,35 @@ spec:
             path: helm/backend
             namespace: chat-app
             wave: "1"
+            image: ramachandrampm/chat-app-backend
 
           - name: frontend
             path: helm/frontend
             namespace: chat-app
             wave: "2"
+            image: ramachandrampm/chat-app-frontend
 
   template:
     metadata:
-      name: "{{name}}"
+      name: "chatapp-{{name}}"
       annotations:
         argocd.argoproj.io/sync-wave: "{{wave}}"
+
+        # Only applied where image exists
+        argocd-image-updater.argoproj.io/image-list: "{{name}}={{image}}"
+
+        argocd-image-updater.argoproj.io/{{name}}.update-strategy: latest
+
+        argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
 
     spec:
       project: default
 
       source:
-        repoURL: https://github.com/YOUR-REPO.git
+        repoURL: https://github.com/NIKHILMPM/Gitops-project.git
         targetRevision: main
         path: "{{path}}"
+        helm: {}
 
       destination:
         server: https://kubernetes.default.svc
