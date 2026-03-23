@@ -33,7 +33,7 @@ spec:
 
         # Apply only where image exists
         argocd-image-updater.argoproj.io/image-list: "{{name}}={{image}}"
-        argocd-image-updater.argoproj.io/{{name}}.update-strategy: latest
+        argocd-image-updater.argoproj.io/{{name}}.update-strategy: newest-build
 
         # Git write-back (values.yaml mode)
         argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
@@ -50,7 +50,9 @@ spec:
         repoURL: https://github.com/NIKHILMPM/Gitops-project.git
         targetRevision: main
         path: "{{path}}"
-        helm: {}
+        helm:
+          valueFiles:
+            - values.yaml
 
       destination:
         server: https://kubernetes.default.svc
