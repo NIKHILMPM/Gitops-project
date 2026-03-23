@@ -5,7 +5,7 @@ labels:
 
 image:
   repository: ramachandrampm/chat-app-frontend
-  tag: latest
+  tag: 10
   pullPolicy: IfNotPresent
 
 containerPort: 80

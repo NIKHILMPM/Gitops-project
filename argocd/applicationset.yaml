@@ -31,12 +31,17 @@ spec:
       annotations:
         argocd.argoproj.io/sync-wave: "{{wave}}"
 
-        # Only applied where image exists
+        # Apply only where image exists
         argocd-image-updater.argoproj.io/image-list: "{{name}}={{image}}"
+        argocd-image-updater.argoproj.io/{{name}}.update-strategy: newest-build
 
-        argocd-image-updater.argoproj.io/{{name}}.update-strategy: latest
-
+        # Git write-back (values.yaml mode)
         argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
+        argocd-image-updater.argoproj.io/write-back-target: helmvalues
+
+        # Helm mapping (IMPORTANT)
+        argocd-image-updater.argoproj.io/{{name}}.helm.image-name: image.repository
+        argocd-image-updater.argoproj.io/{{name}}.helm.image-tag: image.tag
 
     spec:
       project: default
