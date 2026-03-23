@@ -7,7 +7,7 @@ labels:
 
 image:
   repository: ramachandrampm/chat-app-backend
-  tag: 5
+  tag: v1.0.1
   pullPolicy: IfNotPresent
 
 containerPort: 5001
