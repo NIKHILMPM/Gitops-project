@@ -6,8 +6,8 @@ labels:
   app: mongodb
 
 image:
-  repository: mongo
-  tag: latest
+  repository: ramachandrampm/mongo
+  tag: v1.0.1
 
 containerPort: 27017
 
