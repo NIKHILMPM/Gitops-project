@@ -5,6 +5,7 @@ metadata:
   namespace: argocd
 spec:
   description: project creation for chat-application
+
   sourceRepos:
     - "https://github.com/NIKHILMPM/Gitops-project.git"
 
@@ -15,6 +16,8 @@ spec:
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
+    - group: ""
+      kind: PersistentVolume
     - group: "rbac.authorization.k8s.io"
       kind: ClusterRole
     - group: "rbac.authorization.k8s.io"
@@ -31,6 +34,10 @@ spec:
       kind: Service
     - group: ""
       kind: ServiceAccount
+    - group: ""
+      kind: Pod
+    - group: ""
+      kind: PersistentVolumeClaim
     - group: "apps"
       kind: Deployment
     - group: "apps"
@@ -39,5 +46,7 @@ spec:
       kind: Ingress
     - group: "autoscaling"
       kind: HorizontalPodAutoscaler
+    - group: "autoscaling.k8s.io"
+      kind: VerticalPodAutoscaler
     - group: "policy"
       kind: PodDisruptionBudget
