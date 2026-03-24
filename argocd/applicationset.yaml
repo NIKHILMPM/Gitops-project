@@ -12,6 +12,7 @@ spec:
             path: helm/mongodb
             namespace: chat-app
             wave: "0"
+            image: mongo
 
           - name: backend
             path: helm/backend
@@ -40,7 +41,7 @@ spec:
         argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
 
     spec:
-      project: default
+      project: chatapp-project
 
       source:
         repoURL: https://github.com/NIKHILMPM/Gitops-project.git
