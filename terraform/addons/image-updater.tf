@@ -14,5 +14,8 @@ resource "helm_release" "argocd_image_updater" {
 EOF
   }
 
-  depends_on = [helm_release.argocd]
+  depends_on = [
+    helm_release.argocd,
+    module.eks
+  ]
 }

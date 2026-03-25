@@ -57,6 +57,7 @@ YAML
 
   depends_on = [
     helm_release.argocd,
-    kubernetes_secret.argocd_git_creds
+    kubernetes_secret.argocd_git_creds,
+    module.eks
   ]
 }

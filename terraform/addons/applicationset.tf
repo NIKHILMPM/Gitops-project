@@ -64,6 +64,7 @@ YAML
 
   depends_on = [
     kubernetes_manifest.appproject,
-    helm_release.argocd_image_updater
+    helm_release.argocd_image_updater,
+    module.eks
   ]
 }

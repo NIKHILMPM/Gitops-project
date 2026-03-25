@@ -44,3 +44,7 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+
+# SSH Keys
+terra-key-ec2
+terra-key-ec2.pub

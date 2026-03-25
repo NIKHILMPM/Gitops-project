@@ -35,7 +35,7 @@ module "eks" {
       max_size     = 2
       desired_size = 1
 
-      instance_types = ["t2.medium"]
+      instance_types = ["t3.xlarge"]
       capacity_type  = "SPOT"
       disk_size      = 15
 
@@ -51,4 +51,12 @@ module "eks" {
     Environment = "dev"
     Project     = "eks-devops"
   }
+}
+
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
 }
