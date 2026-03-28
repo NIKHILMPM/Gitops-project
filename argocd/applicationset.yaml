@@ -6,25 +6,25 @@ metadata:
 
 spec:
   generators:
-    - list:
-        elements:
-          - name: mongodb
-            path: helm/mongodb
-            namespace: chat-app
-            wave: "0"
-            image: mongo
+  - list:
+      elements:
+      - name: mongodb
+        path: helm/mongodb
+        namespace: chat-app
+        wave: "0"
+        image: mongo
 
-          - name: backend
-            path: helm/backend
-            namespace: chat-app
-            wave: "1"
-            image: ramachandrampm/chat-app-backend
+      - name: backend
+        path: helm/backend
+        namespace: chat-app
+        wave: "1"
+        image: ramachandrampm/chat-app-backend
 
-          - name: frontend
-            path: helm/frontend
-            namespace: chat-app
-            wave: "2"
-            image: ramachandrampm/chat-app-frontend
+      - name: frontend
+        path: helm/frontend
+        namespace: chat-app
+        wave: "2"
+        image: ramachandrampm/chat-app-frontend
 
   template:
     metadata:
@@ -32,14 +32,16 @@ spec:
       annotations:
         argocd.argoproj.io/sync-wave: "{{wave}}"
 
-        # Image Updater config (CLEAN)
         argocd-image-updater.argoproj.io/image-list: "{{name}}={{image}}"
+
         argocd-image-updater.argoproj.io/{{name}}.update-strategy: semver
         argocd-image-updater.argoproj.io/{{name}}.allow-tags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
+        argocd-image-updater.argoproj.io/{{name}}.force-update: "true"
 
-        # Git write-back (use argocd-source mode)
+        # 🔥 THIS is what YOU need
+        argocd-image-updater.argoproj.io/{{name}}.helm.parameter: image.tag
+
         argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/argocd-image-updater-git-creds
-
     spec:
       project: chatapp-project
 
@@ -58,4 +60,4 @@ spec:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
+        - CreateNamespace=true

@@ -1,21 +1,13 @@
-resource "helm_release" "argocd_image_updater" {
-  name      = "argocd-image-updater"
-  namespace = "argocd"
+resource "null_resource" "argocd_image_updater" {
 
-  repository = "https://argoproj.github.io/argo-helm"
-  chart      = "argocd-image-updater"
-
-  set {
-    name = "config.registries"
-    value = <<EOF
-- name: Docker Hub
-  api_url: https://registry-1.docker.io
-  prefix: docker.io
-EOF
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/v0.12.2/manifests/install.yaml
+EOT
   }
 
   depends_on = [
     helm_release.argocd,
-    module.eks
+    kubernetes_secret.argocd_git_creds
   ]
 }

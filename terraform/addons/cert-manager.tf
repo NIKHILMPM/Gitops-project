@@ -6,10 +6,10 @@ resource "helm_release" "cert_manager" {
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
-
-  depends_on = [module.eks]
+  set = [
+    {
+      name  = "installCRDs"
+      value = "true"
+    }
+  ]
 }

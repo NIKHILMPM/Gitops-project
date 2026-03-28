@@ -5,14 +5,13 @@ resource "kubernetes_secret" "argocd_git_creds" {
   }
 
   data = {
-    username = base64encode(var.github_username)
-    password = base64encode(var.github_token)
+    username = var.github_username
+    password = var.github_token
   }
 
   type = "Opaque"
 
   depends_on = [
-    helm_release.argocd,
-    module.eks
+    helm_release.argocd
   ]
 }

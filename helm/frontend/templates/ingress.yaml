@@ -4,15 +4,23 @@ metadata:
   name: {{ .Values.ingress.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "{{ .Values.ingress.sslRedirect }}"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-cookie-path: "/ /"
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    cert-manager.io/cluster-issuer: letsencrypt-prod 
 
 spec:
   ingressClassName: {{ .Values.ingress.className }}
+
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecret }}
+
   rules:
-    - http:
+    - host: {{ .Values.ingress.host }} 
+      http:
         paths:
           - path: /
             pathType: Prefix

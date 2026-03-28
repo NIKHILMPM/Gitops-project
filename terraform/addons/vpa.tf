@@ -5,5 +5,5 @@ resource "helm_release" "vpa" {
   repository = "https://charts.fairwinds.com/stable"
   chart      = "vpa"
 
-  depends_on = [module.eks, helm_release.metrics_server]
+  depends_on = [helm_release.metrics_server]
 }
