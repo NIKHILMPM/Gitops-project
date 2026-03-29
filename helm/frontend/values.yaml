@@ -19,7 +19,7 @@ deployment:
 
 env:
   NODE_ENV: production
-  BACKEND_URL: https://myapp4.xyz/api
+  BACKEND_URL: http://backend:5001
 
 ingress:
   name: chat-app-ingress
@@ -27,5 +27,3 @@ ingress:
   sslRedirect: "true"
   backendService: backend
   backendPort: 5001
-  host: myapp4.xyz
-  tlsSecret: chatapp-tls
