@@ -1,4 +1,4 @@
-resource "kubernetes_secret" "argocd_git_creds" {
+resource "kubernetes_secret_v1" "argocd_git_creds" {
   metadata {
     name      = "argocd-image-updater-git-creds"
     namespace = "argocd"

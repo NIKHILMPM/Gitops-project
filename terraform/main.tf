@@ -1,5 +1,5 @@
 #####################################
-# TERRAFORM + PROVIDERS
+# TERRAFORM PROVIDER
 #####################################
 terraform {
   required_providers {
@@ -7,17 +7,94 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+
     kubernetes = {
-      source  = "hashicorp/kubernetes"
+      source = "hashicorp/kubernetes"
     }
+
     helm = {
-      source  = "hashicorp/helm"
+      source = "hashicorp/helm"
+    }
+
+    kubectl = {
+      source = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
     }
   }
 }
 
+#####################################
+# AWS PROVIDER
+#####################################
 provider "aws" {
   region = var.aws_region
+}
+
+#####################################
+# KUBERNETES PROVIDER
+#####################################
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(
+    data.aws_eks_cluster.cluster.certificate_authority[0].data
+  )
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+
+    args = [
+      "eks",
+      "get-token",
+      "--cluster-name",
+      data.aws_eks_cluster.cluster.name
+    ]
+  }
+} 
+
+#####################################
+# KUBELET PROVIDER
+#####################################
+provider "kubectl" {
+  load_config_file       = false
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(
+    data.aws_eks_cluster.cluster.certificate_authority[0].data
+  )
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+
+    args = [
+      "eks",
+      "get-token",
+      "--cluster-name",
+      data.aws_eks_cluster.cluster.name
+    ]
+  }
+}
+#####################################
+# HELM PROVIDER
+#####################################
+provider "helm" {
+  kubernetes = {
+    host                   = data.aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(
+      data.aws_eks_cluster.cluster.certificate_authority[0].data
+    )
+
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args = [
+        "eks",
+        "get-token",
+        "--cluster-name",
+        data.aws_eks_cluster.cluster.name
+      ]
+    }
+  }
 }
 
 #####################################
@@ -136,39 +213,6 @@ data "aws_eks_cluster_auth" "cluster" {
   depends_on = [module.eks]
 }
 
-#####################################
-# KUBERNETES PROVIDER
-#####################################
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(
-    data.aws_eks_cluster.cluster.certificate_authority[0].data
-  )
-  token = data.aws_eks_cluster_auth.cluster.token
-}
-
-#####################################
-# HELM PROVIDER
-#####################################
-provider "helm" {
-  kubernetes = {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(
-      data.aws_eks_cluster.cluster.certificate_authority[0].data
-    )
-
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args = [
-        "eks",
-        "get-token",
-        "--cluster-name",
-        data.aws_eks_cluster.cluster.name
-      ]
-    }
-  }
-}
 
 #####################################
 # ADDONS MODULE
@@ -181,6 +225,7 @@ module "addons" {
   providers = {
     kubernetes = kubernetes
     helm       = helm
+    kubectl    = kubectl
   }
 
   github_username = var.github_username
