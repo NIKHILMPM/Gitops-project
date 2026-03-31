@@ -1,0 +1,81 @@
+name: ChatApp CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # manual trigger (like Jenkins manual build)
+
+env:
+  DOCKER_USER: ramachandrampm
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Get Changed Services
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger detected"
+            echo "services=frontend backend" >> $GITHUB_OUTPUT
+          else
+            services=$(git diff HEAD~1 HEAD --name-only | cut -d/ -f1 | sort -u)
+            filtered=$(echo "$services" | grep -E 'frontend|backend' || true)
+
+            if [ -z "$filtered" ]; then
+              echo "No changes in frontend/backend"
+              echo "services=" >> $GITHUB_OUTPUT
+            else
+              echo "services=$filtered" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Stop if no changes
+        if: steps.changes.outputs.services == ''
+        run: |
+          echo "Nothing to build"
+          exit 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build, Push & Update Manifest
+        run: |
+          for svc in ${{ steps.changes.outputs.services }}
+          do
+            IMAGE=${DOCKER_USER}/chat-app-$svc:${{ github.run_number }}
+
+            echo "Building $svc"
+            docker build -t $IMAGE ./$svc
+
+            echo "Pushing $svc"
+            docker push $IMAGE
+
+            echo "Updating manifest for $svc"
+            sed -i "s|image:.*|image: $IMAGE|g" k8s/${svc}-manifest.yaml
+          done
+
+      - name: Commit & Push Manifest Changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add k8s/*.yaml
+
+          if ! git diff --cached --quiet; then
+            git commit -m "[ci skip] update images"
+            git push
+          else
+            echo "No changes to commit"
+          fi

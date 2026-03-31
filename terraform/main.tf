@@ -1,162 +1,25 @@
 #####################################
-# TERRAFORM PROVIDER
+# NETWORK MODULE
 #####################################
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
+module "network" {
+  source = "./network"
 
-    kubernetes = {
-      source = "hashicorp/kubernetes"
-    }
+  key_name        = "terra-key-ec2"
+  public_key_path = "${path.module}/terra-key-ec2.pub"
 
-    helm = {
-      source = "hashicorp/helm"
-    }
+  azs = [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1f"
+  ]
 
-    kubectl = {
-      source = "gavinbunney/kubectl"
-      version = ">= 1.14.0"
-    }
-  }
+  ingress_ports = var.ingress_ports
 }
 
 #####################################
-# AWS PROVIDER
-#####################################
-provider "aws" {
-  region = var.aws_region
-}
-
-#####################################
-# KUBERNETES PROVIDER
-#####################################
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(
-    data.aws_eks_cluster.cluster.certificate_authority[0].data
-  )
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-
-    args = [
-      "eks",
-      "get-token",
-      "--cluster-name",
-      data.aws_eks_cluster.cluster.name
-    ]
-  }
-} 
-
-#####################################
-# KUBELET PROVIDER
-#####################################
-provider "kubectl" {
-  load_config_file       = false
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(
-    data.aws_eks_cluster.cluster.certificate_authority[0].data
-  )
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-
-    args = [
-      "eks",
-      "get-token",
-      "--cluster-name",
-      data.aws_eks_cluster.cluster.name
-    ]
-  }
-}
-#####################################
-# HELM PROVIDER
-#####################################
-provider "helm" {
-  kubernetes = {
-    host                   = data.aws_eks_cluster.cluster.endpoint
-    cluster_ca_certificate = base64decode(
-      data.aws_eks_cluster.cluster.certificate_authority[0].data
-    )
-
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args = [
-        "eks",
-        "get-token",
-        "--cluster-name",
-        data.aws_eks_cluster.cluster.name
-      ]
-    }
-  }
-}
-
-#####################################
-# KEY PAIR
-#####################################
-resource "aws_key_pair" "my_public_key" {
-  key_name   = "terra-key-ec2"
-  public_key = file("${path.module}/terra-key-ec2.pub")
-}
-
-#####################################
-# DEFAULT VPC
-#####################################
-resource "aws_default_vpc" "default" {}
-
-data "aws_subnets" "eks_subnets" {
-  filter {
-    name   = "vpc-id"
-    values = [aws_default_vpc.default.id]
-  }
-
-  # ✅ FILTER AZ HERE DIRECTLY
-  filter {
-    name = "availability-zone"
-    values = [
-      "us-east-1a",
-      "us-east-1b",
-      "us-east-1c",
-      "us-east-1d",
-      "us-east-1f"
-    ]
-  }
-}
-
-#####################################
-# SECURITY GROUP
-#####################################
-resource "aws_security_group" "eks_sg" {
-  name   = "eks-sg"
-  vpc_id = aws_default_vpc.default.id
-
-  dynamic "ingress" {
-    for_each = var.ingress_ports
-
-    content {
-      from_port   = ingress.value.from_port
-      to_port     = ingress.value.to_port
-      protocol    = ingress.value.protocol
-      cidr_blocks = [ingress.value.cidr]
-    }
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-#####################################
-# EKS CLUSTER
+# EKS CLUSTER MODULE
 #####################################
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
@@ -170,9 +33,8 @@ module "eks" {
 
   enable_cluster_creator_admin_permissions = true
 
-  vpc_id     = aws_default_vpc.default.id
-  subnet_ids = data.aws_subnets.eks_subnets.ids   # ✅ FINAL FIX
-
+  vpc_id     = module.network.vpc_id
+  subnet_ids = module.network.subnet_ids
   cluster_addons = {
     coredns    = {}
     kube-proxy = {}
@@ -188,10 +50,10 @@ module "eks" {
       instance_types = ["t3.large"]
       capacity_type  = "SPOT"
 
-      key_name = aws_key_pair.my_public_key.key_name
+      key_name = module.network.key_name
 
       vpc_security_group_ids = [
-        aws_security_group.eks_sg.id
+        module.network.security_group_id
       ]
     }
   }
@@ -199,7 +61,10 @@ module "eks" {
   tags = {
     Environment = "dev"
   }
+
+  depends_on = [module.network]
 }
+
 #####################################
 # WAIT FOR EKS
 #####################################
@@ -213,6 +78,10 @@ data "aws_eks_cluster_auth" "cluster" {
   depends_on = [module.eks]
 }
 
+resource "time_sleep" "wait_for_eks" {
+  depends_on = [module.eks]
+  create_duration = "120s"
+}
 
 #####################################
 # ADDONS MODULE
@@ -220,7 +89,10 @@ data "aws_eks_cluster_auth" "cluster" {
 module "addons" {
   source = "./addons"
 
-  depends_on = [module.eks]
+  depends_on = [
+    module.eks,
+    time_sleep.wait_for_eks
+  ]
 
   providers = {
     kubernetes = kubernetes
