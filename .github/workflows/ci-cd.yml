@@ -16,7 +16,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # Detect what changed
       - name: Detect Changed Services
         id: changes
         run: |
@@ -24,22 +30,30 @@ jobs:
             echo "Manual trigger detected"
             echo "services=frontend backend" >> $GITHUB_OUTPUT
           else
-            services=$(git diff HEAD~1 HEAD --name-only | cut -d/ -f1 | sort -u)
+            echo "Detecting changes..."
+
+            services=$(git diff HEAD^ HEAD --name-only 2>/dev/null | cut -d/ -f1 | sort -u)
             filtered=$(echo "$services" | grep -E 'frontend|backend' || true)
 
             if [ -z "$filtered" ]; then
               echo "No changes in frontend/backend"
               echo "services=" >> $GITHUB_OUTPUT
             else
+              echo "Changed services: $filtered"
               echo "services=$filtered" >> $GITHUB_OUTPUT
             fi
           fi
 
-      - name: Stop if no changes.
+      # Stop pipeline if nothing relevant changed
+      - name: Stop if no changes
         if: steps.changes.outputs.services == ''
         run: |
-          echo "Nothing to build"
+          echo "No relevant changes. Skipping build."
           exit 0
+
+      - name: Show detected services
+        run: |
+          echo "Services: ${{ steps.changes.outputs.services }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -50,15 +64,41 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & Push Images
+      # Build & Push with proper semver increment
+      - name: Build & Push Images (SemVer per service)
         run: |
           for svc in ${{ steps.changes.outputs.services }}
           do
-            IMAGE=${DOCKER_USER}/chat-app-$svc:v1.0.${{ github.run_number }}
+            echo "========================================"
+            echo "Processing service: $svc"
 
-            echo "Building $svc"
+            # Get all tags
+            TAGS=$(curl -s https://hub.docker.com/v2/repositories/${DOCKER_USER}/chat-app-$svc/tags?page_size=100 \
+              | jq -r '.results[].name')
+
+            # Get highest semver tag
+            LATEST=$(echo "$TAGS" | grep -E '^v1\.0\.[0-9]+$' | sort -V | tail -n 1)
+
+            echo "Latest semver tag: $LATEST"
+
+            # Increment version
+            if [[ "$LATEST" =~ ^v1\.0\.([0-9]+)$ ]]; then
+              NUM=${BASH_REMATCH[1]}
+              NEW_NUM=$((NUM + 1))
+            else
+              NEW_NUM=1
+            fi
+
+            NEW_TAG="v1.0.$NEW_NUM"
+            IMAGE="${DOCKER_USER}/chat-app-$svc:$NEW_TAG"
+
+            echo "New tag: $NEW_TAG"
+            echo "Building image: $IMAGE"
+
             docker build -t $IMAGE ./$svc
 
-            echo "Pushing $svc"
+            echo "Pushing image: $IMAGE"
             docker push $IMAGE
+
+            echo "========================================"
           done
