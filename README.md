@@ -270,6 +270,8 @@ ArgoCD implements GitOps for continuous deployment.
 
 ![ArgoCD Dashboard](public/project_images/argocd-1.png)
 ![ArgoCD Dashboard](public/project_images/argocd-2.png)
+![ArgoCD Dashboard](public/project_images/argocd-apps.png)
+
 
 ---
 
