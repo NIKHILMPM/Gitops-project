@@ -1,24 +1,30 @@
-# DevSecOps CI/CD Pipeline for Full Stack Chat Application
+# Complete GitOps CI/CD Pipeline for Chat Application
 
-This project demonstrates a **complete DevSecOps workflow** for deploying a full-stack chat application using **Terraform, Ansible, Jenkins, Docker, Kubernetes, ArgoCD, Prometheus, and Grafana**.
+This project demonstrates a **complete GitOps-based CI/CD workflow** for deploying a full-stack chat application using **Terraform, GitHub Actions, Docker, Kubernetes, ArgoCD, and ArgoCD Image Updater**.
 
-The system automates **infrastructure provisioning, CI/CD, security scanning, containerization, GitOps deployment, and monitoring**.
+The system automates:
+
+* Infrastructure provisioning (EKS)
+* Continuous Integration (CI)
+* GitOps-based Continuous Deployment (CD)
+* Automated image updates
+* Kubernetes-based deployment
 
 ---
 
 # 1. Local Development (Docker Compose)
 
-Before deploying through the CI/CD pipeline, the application can be tested locally using **Docker Compose**.
+Before deploying through the pipeline, the application can be tested locally using Docker Compose.
 
 ## Services
 
-The `docker-compose.yml` defines three services:
+The `docker-compose.yml` defines:
 
-- **MongoDB** – Database with persistent storage and health check  
-- **Backend** – Node.js API connected to MongoDB  
-- **Frontend** – Web interface served via Nginx  
+* **MongoDB** – Database with persistent storage
+* **Backend** – Node.js API connected to MongoDB
+* **Frontend** – Web interface served via Nginx
 
-All services run inside a shared Docker network for internal communication.
+All services run inside a shared Docker network.
 
 ## Run the Application
 
@@ -28,269 +34,352 @@ docker compose up -d
 
 ## Access the Application
 
-- **Frontend:** http://localhost:8081  
-- **Backend API:** http://localhost:5001  
-- **MongoDB:** localhost:27017  
+* Frontend: http://localhost:8081
+* Backend: http://localhost:5001
+* MongoDB: localhost:27017
 
-### Docker Compose
+### 📸 Screenshots
 
 ![Docker Compose](public/project_images/docker-compose.png)
 
 ---
 
-# 2. Infrastructure Provisioning (Terraform)
+# 2. Infrastructure Provisioning (Terraform - EKS)
 
-Terraform provisions the AWS infrastructure required for the DevOps environment.
-
-## Infrastructure Configuration
-
-- **AWS Provider** – Connects Terraform to AWS in the specified region  
-- **Default VPC** – Uses the default VPC in the AWS account  
-- **Default Security Group** – Applies the default security group  
-
-## EC2 Instance
-
-- Instance type: **t3.large**
-- Public IP enabled
-- SSH key pair for access
-- **30 GB gp3 root volume**
-
-## Additional Configuration
-
-- **Tags** – Instance named `devops-kind-server`
-- **Output** – Displays the public IP address used later in the Ansible inventory
-
-### Terraform Infrastructure
-
-![Terraform Infrastructure](public/project_images/terraform1.png)
-
-### Terraform Output
-
-![Terraform Output](public/project_images/terraform2.png)
+Terraform is used to provision a **fully automated AWS EKS environment along with all required add-ons and GitOps components** using a modular approach.
 
 ---
 
-# 3. Server Configuration (Ansible)
+## 🔧 How Terraform Automates Everything
 
-Ansible automatically configures the server and installs the required DevOps tools.
-
-## Installed Components
-
-- **Docker** – Container runtime  
-- **Jenkins** – CI/CD automation server  
-- **Kind** – Kubernetes cluster running inside Docker  
-- **kubectl** – Kubernetes command line tool  
-- **Helm** – Kubernetes package manager  
-- **Kind K8s Addons** – Additional Kubernetes components  
-- **DevSecOps Addons** – Security and monitoring tools used in the pipeline  
-
-These roles prepare the server to run the **CI/CD pipeline and Kubernetes workloads**.
-
-### Ansible Setup
-
-![Ansible Setup](public/project_images/ansible.png)
-
----
-
-# 4. Jenkins CI/CD Pipeline
-
-The Jenkins pipeline automates the **build, security scanning, containerization, and deployment** process.
-
-It is designed to rebuild and deploy **only the services that were modified**, improving pipeline efficiency.
-
-### Jenkins Pipeline (Manual Build Trigger that Builds Both Frontend and Backend Services)
-
-![Jenkins Pipeline](public/project_images/jenkins-stages.jpeg)
-
-### Pipeline Triggers
-
-### Frontend Trigger (Triggers when frontend code changes and builds and pushes only the frontend image to DockerHub)
-
-![Frontend Pipeline Trigger](public/project_images/pipeline-frontend-trigger.png)
-
-### Backend Trigger (Triggers when backend code changes and builds and pushes only the backend image to DockerHub)
-
-![Backend Pipeline Trigger](public/project_images/pipeline-backend-trigger.png)
-
----
-
-## Pipeline Workflow
-
-### 1. Checkout Source Code
-
-Jenkins pulls the latest version of the repository using the configured SCM.
-
-### 2. Manual Build Detection
-
-The pipeline checks whether the build was triggered manually.
-
-- If **manual**, both frontend and backend services are selected for the pipeline.
-- If triggered by a **Git commit**, the pipeline determines which services were modified.
-
-### 3. Change Detection
-
-Jenkins compares the latest commit with the previous one using:
+A single command:
 
 ```bash
-git diff
+terraform apply
 ```
 
-It extracts the top-level folders (`frontend` or `backend`) that changed.
-
-If no relevant changes are detected, the pipeline exits early to avoid unnecessary builds.
-
-### 4. SonarQube Code Analysis
-
-The project is scanned using **SonarQube** to analyze code quality, detect bugs, and identify security vulnerabilities.
-
-![SonarQube Dashboard](public/project_images/sonar.png)
-
-### 5. OWASP Dependency Check
-
-The pipeline scans project dependencies to detect known vulnerabilities in third-party libraries.
-
-![OWASP Scan](public/project_images/owasp.png)
-
-![OWASP Report](public/project_images/owasp1.png)
-
-### 6. Trivy Security Scan
-
-Before building the container image, **Trivy** scans the service source code directory for potential security risks.
-
-![Trivy Scan](public/project_images/trivy.png)
-
-### 7. Docker Image Build and Push
-
-For each modified service:
-
-- A Docker image is built from the corresponding directory (`frontend` or `backend`)
-- The image is tagged with the Jenkins **build number**
-- The image is pushed to **DockerHub**
-
-### DockerHub Images
-
-![DockerHub Images](public/project_images/docker%20hub.png)
-
-### 8. Update Kubernetes Manifests
-
-The pipeline updates the image tag inside the corresponding Kubernetes manifest file using `sed`.
-
-### 9. Commit and Push Manifest Changes
-
-Jenkins commits the updated manifest and pushes it to the Git repository.
-
-### 10. GitOps Deployment via ArgoCD
-
-Since ArgoCD continuously monitors the repository, it detects the manifest change and automatically **synchronizes the Kubernetes cluster**, deploying the new container image.
+performs the complete setup:
 
 ---
 
-# 5. DevSecOps Security Scanning
+### 🔹 1. Network Module
 
-Security checks are integrated directly into the CI pipeline to ensure the application is validated before deployment.
+* Creates **SSH Key Pair**
+* Fetches **default VPC**
+* Retrieves **subnets across AZs**
+* Creates **custom Security Group** with required ports
 
-## Tools Used
+### 📸 Screenshots
 
-- **SonarQube** – Performs static code analysis to detect bugs, code smells, and vulnerabilities.
-- **OWASP Dependency Check** – Scans project dependencies for known CVEs.
-- **Trivy** – Performs filesystem security scanning before container image creation.
-
-This ensures the pipeline follows a **DevSecOps approach**, integrating security into every build.
-
----
-
-# 6. Kubernetes Deployment
-
-The application is deployed to Kubernetes using manifests for the **frontend**, **backend**, and **MongoDB** services.
-
-## Frontend
-
-- **Deployment** – Runs frontend application pods
-- **Service** – Exposes the frontend internally within the cluster
-
-## Backend
-
-- **Deployment** – Runs backend API pods
-- **Service** – Provides internal communication
-- **Horizontal Pod Autoscaler (HPA)** – Automatically scales backend pods based on CPU usage
-
-## MongoDB
-
-- **StatefulSet** – Provides stable identity and persistent storage
-- **Headless Service** – Enables stable networking for MongoDB pods
-- **Persistent Volume (PV)** – Storage for database data
-- **Persistent Volume Claim (PVC)** – Requests storage from PV
-- **Secret** – Stores database credentials securely
-- **Vertical Pod Autoscaler (VPA)** – Adjusts CPU and memory automatically
-
-## Ingress
-
-- **Ingress Resource** routes external traffic to the frontend service.
-
-This architecture ensures **scalability, persistence, and high availability**.
+![Key Pair](public/project_images/network.png)
 
 ---
 
-# 7. GitOps Deployment (ArgoCD)
+### 🔹 2. EKS Cluster Module
 
-**ArgoCD** implements a GitOps deployment strategy for Kubernetes.
+Using the official EKS module:
+
+* Creates **EKS Cluster (v1.29)**
+* Configures **public + private endpoint access**
+* Sets up **Managed Node Group**
+* Instance type: `t3.xlarge`
+* Disk: 30GB
+
+### 📸 Screenshots
+
+![EKS Cluster](public/project_images/eks.png)
+
+---
+
+### 🔹 3. Dynamic Kubernetes Access
+
+Terraform automatically configures:
+
+* Kubernetes provider
+* Helm provider
+* Kubectl provider
+
+Using:
+
+* EKS cluster endpoint
+* Authentication via AWS CLI
+
+---
+
+### 🔹 4. Add-ons Deployment (Fully Automated)
+
+Using Helm + Kubectl inside Terraform:
+
+#### Installed Components:
+
+* Metrics Server
+* NGINX Ingress Controller
+* ArgoCD
+* Prometheus + Grafana
+* Vertical Pod Autoscaler (VPA)
+
+### 📸 Screenshots
+
+![Addons](public/project_images/addons.png)
+
+---
+
+### 🔹 5. ArgoCD Setup via Terraform
+
+Terraform also:
+
+* Creates Git credentials secret
+* Installs Image Updater
+* Applies:
+
+  * AppProject
+  * ApplicationSet
+
+### 📸 Screenshots
+
+![AppProject](public/project_images/appproj.png)
+![ApplicationSet](public/project_images/app-set.png)
+
+---
+
+### 🔹 6. Image Updater Automation
+
+* Installs ArgoCD Image Updater
+* Waits until deployment is ready
+
+### 📸 Screenshots
+
+![Image Updater](public/project_images/terra-image.png)
+
+---
+
+## ⚡ End Result
+
+After `terraform apply`, you get:
+
+* Fully working EKS cluster
+* All add-ons installed
+* ArgoCD configured
+* Applications deployed automatically
+
+### 📸 Final Deployment Proof
+
+![Kubernetes Pods](public/project_images/terra-k8s.png)
+
+---
+
+## 📸 Terraform Execution Proof
+
+![Terraform Apply](public/project_images/terraform-apply.png)
+![Terraform Apply-2](public/project_images/terraform-apply-2.png)
+![Terraform output](public/project_images/terraform-apply-3.png)
+
+---
+
+## 💡 Key Highlight
+
+This setup demonstrates **true Infrastructure as Code + GitOps bootstrap**, where:
+
+👉 Terraform provisions infrastructure
+👉 Installs all add-ons
+👉 Bootstraps ArgoCD
+👉 Deploys applications automatically
+
+---
+
+# 3. CI Pipeline (GitHub Actions)
+
+CI is implemented using GitHub Actions to automate Docker image builds and pushes.
+
+## Pipeline Features
+
+* Triggered on push to `main`
+* Detects changes in:
+
+  * frontend
+  * backend
+* Builds only modified services
+* Uses **semantic versioning (v1.0.x)**
+* Pushes images to DockerHub
+
+## Workflow Logic
+
+* Uses `git diff` to detect changed folders
+* Skips pipeline if no relevant changes
+* Automatically increments version tags
+* Builds and pushes Docker images per service
+
+This ensures **efficient and optimized CI execution**.
+
+### 📸 Screenshots
+
+![GitHub Actions Pipeline](public/project_images/github-actions.png)
+![CI Change Detection](public/project_images/ci-change-detection.png)
+![CI Docker Push](public/project_images/ci-docker-push.png)
+
+---
+
+# 4. Kubernetes Deployment (Manifests)
+
+Kubernetes manifests are stored in Git and act as the **single source of truth**.
+
+## Components
+
+### Frontend
+
+* Deployment
+* Service
+
+### Backend
+
+* Deployment
+* Service
+* HPA (Horizontal Pod Autoscaler)
+
+### MongoDB
+
+* StatefulSet
+* Headless Service
+* Persistent Volume (PV)
+* Persistent Volume Claim (PVC)
+* Secret
+
+### Ingress
+
+* NGINX Ingress routes external traffic
+
+This ensures **scalability, persistence, and high availability**.
+
+### 📸 Screenshots
+
+![Kubernetes all](public/project_images/k8s-all.png)
+
+---
+
+# 5. GitOps Deployment (ArgoCD)
+
+ArgoCD implements GitOps for continuous deployment.
 
 ## Workflow
 
-- Kubernetes manifests are stored in a **Git repository**
-- ArgoCD continuously **monitors the repository**
-- When manifests change, ArgoCD automatically **synchronizes the cluster**
+* Kubernetes manifests are stored in Git
+* ArgoCD continuously monitors the repository
+* Any change in manifests triggers automatic deployment
 
-### ArgoCD Application
+### 📸 Screenshots
 
-![ArgoCD Application](public/project_images/argocd1.png)
-
-### ArgoCD Sync
-
-![ArgoCD Sync](public/project_images/argocd2.png)
+![ArgoCD Dashboard](public/project_images/argocd-1.png)
+![ArgoCD Dashboard](public/project_images/argocd-2.png)
 
 ---
 
-# 8. Monitoring (Prometheus + Grafana)
+## AppProject
 
-Monitoring is implemented using **Prometheus** and **Grafana**.
+Defines:
 
-- **Prometheus** collects metrics from the Kubernetes cluster and applications.
-- **Grafana** visualizes these metrics using dashboards.
+* Allowed repositories
+* Destination clusters
+* Namespace restrictions
 
-### Prometheus Metrics
+Ensures **controlled and secure deployments**.
 
-![Prometheus Metrics](public/project_images/prometheus.png)
+### 📸 Screenshots
 
-### Grafana Dashboards
-
-![Grafana Dashboard](public/project_images/grafana1.png)
-
-![Grafana Metrics](public/project_images/grafana2.png)
+![AppProject Configuration](public/project_images/argocdproj.png)
 
 ---
 
-# 9. Application Working
+## ApplicationSet
 
-The final deployed application running successfully in the Kubernetes environment.
+Automatically generates applications for:
 
-![Application Running](public/project_images/working.png)
+* frontend
+* backend
 
-This project demonstrates how a modern **DevSecOps pipeline** can automate the entire software delivery lifecycle from infrastructure provisioning to production deployment and monitoring.
+Benefits:
 
-By integrating tools such as **Terraform, Ansible, Jenkins, Docker, Kubernetes, ArgoCD, Prometheus, and Grafana**, the system achieves:
+* No need to create apps manually
+* Scales easily for multiple services
+* Maintains consistency
 
-- **Automated Infrastructure Provisioning** using Terraform
-- **Automated Server Configuration** using Ansible
-- **Continuous Integration & Delivery** with Jenkins
-- **Containerization** using Docker
-- **Security Integration (DevSecOps)** with SonarQube, OWASP Dependency Check, and Trivy
-- **GitOps-based Deployment** using ArgoCD
-- **Scalable Container Orchestration** with Kubernetes
-- **Real-time Monitoring and Observability** using Prometheus and Grafana
+### 📸 Screenshots
 
-The pipeline ensures that every code change goes through **automated testing, security scanning, containerization, and deployment**, enabling faster releases while maintaining security and reliability.
-
-This architecture reflects **real-world DevSecOps practices used in modern cloud-native environments**, providing a scalable and production-ready workflow for deploying full-stack applications.
+![Generated Applications](public/project_images/app-set.png)
 
 ---
+
+# 6. ArgoCD Image Updater
+
+Automates image updates in Kubernetes manifests.
+
+## Functionality
+
+* Detects new Docker images in DockerHub
+* Updates image tags in manifests
+* Triggers ArgoCD sync automatically
+
+This enables:
+
+👉 **Fully automated deployments without manual changes**
+
+### 📸 Screenshots
+
+![Image Updater Logs](public/project_images/image-updater.png)
+
+---
+
+# 7. Monitoring (Prometheus + Grafana)
+
+Monitoring is implemented using:
+
+* Prometheus – Collects metrics
+* Grafana – Visualizes metrics
+
+Provides real-time insights into:
+
+* Cluster performance
+* Application health
+
+### 📸 Screenshots
+
+![Prometheus Metrics](public/project_images/prom.png)
+![Grafana Metrics](public/project_images/grafana.png)
+
+---
+
+# 8. Application Working
+
+The application is successfully deployed on EKS and accessible via Ingress.
+
+### 📸 Screenshots
+
+![Final Application UI](public/project_images/working-app-1.png)
+![Final Application UI](public/project_images/working-app-2.png)
+
+---
+
+# ✅ Key Achievements
+
+* Complete GitOps implementation
+* Automated CI using GitHub Actions
+* Automated CD using ArgoCD
+* No manual deployment required
+* Scalable Kubernetes architecture
+
+---
+
+# 🚀 Conclusion
+
+This project demonstrates a modern **GitOps-based DevOps workflow** where:
+
+* Terraform provisions infrastructure
+* GitHub Actions handles CI
+* ArgoCD manages CD
+* Image Updater automates deployments
+
+This approach ensures:
+
+* Reliability
+* Scalability
+* Automation
+* Faster delivery cycles

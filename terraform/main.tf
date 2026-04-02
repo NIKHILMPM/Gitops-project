@@ -47,8 +47,9 @@ module "eks" {
       max_size     = 2
       desired_size = 1
 
-      instance_types = ["t3.large"]
-      capacity_type  = "SPOT"
+      instance_types = ["t3.xlarge"]
+      capacity_type  = "ON_DEMAND"
+      disk_size = 30
 
       key_name = module.network.key_name
 

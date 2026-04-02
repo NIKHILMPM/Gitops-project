@@ -1,5 +1,8 @@
+#####################################
+# OUTPUTS
+#####################################
 output "vpc_id" {
-  value = aws_default_vpc.this.id
+  value = data.aws_vpc.default.id
 }
 
 output "subnet_ids" {

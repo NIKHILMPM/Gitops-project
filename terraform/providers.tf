@@ -25,10 +25,10 @@ provider "kubernetes" {
       data.aws_eks_cluster.cluster.name
     ]
   }
-} 
+}
 
 #####################################
-# KUBELET PROVIDER
+# KUBECTL PROVIDER
 #####################################
 provider "kubectl" {
   load_config_file       = false
@@ -63,6 +63,7 @@ provider "helm" {
     exec = {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
+
       args = [
         "eks",
         "get-token",
@@ -72,4 +73,3 @@ provider "helm" {
     }
   }
 }
-

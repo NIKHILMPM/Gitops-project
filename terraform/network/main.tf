@@ -7,9 +7,11 @@ resource "aws_key_pair" "this" {
 }
 
 #####################################
-# DEFAULT VPC
+# DEFAULT VPC (SAFE READ)
 #####################################
-resource "aws_default_vpc" "this" {}
+data "aws_vpc" "default" {
+  default = true
+}
 
 #####################################
 # SUBNETS
@@ -17,7 +19,7 @@ resource "aws_default_vpc" "this" {}
 data "aws_subnets" "this" {
   filter {
     name   = "vpc-id"
-    values = [aws_default_vpc.this.id]
+    values = [data.aws_vpc.default.id]
   }
 
   filter {
@@ -31,7 +33,7 @@ data "aws_subnets" "this" {
 #####################################
 resource "aws_security_group" "this" {
   name   = var.sg_name
-  vpc_id = aws_default_vpc.this.id
+  vpc_id = data.aws_vpc.default.id
 
   dynamic "ingress" {
     for_each = var.ingress_ports
@@ -51,3 +53,4 @@ resource "aws_security_group" "this" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
